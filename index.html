@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣證交所每日股市資料</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .search-container {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 200px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>台灣證交所每日股市資料</h1>
+    
+    <div class="search-container">
+        <input type="text" id="searchCode" placeholder="搜尋代號" onkeyup="filterData()">
+        <input type="text" id="searchName" placeholder="搜尋名稱" onkeyup="filterData()">
+        <button onclick="fetchStockData()">獲取資料</button>
+    </div>
+
+    <button onclick="window.location.href='index2.html'">空氣品質查詢系統</button>
+    
+    <table id="stockDataTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">代號</th>
+                <th onclick="sortTable(1)">名稱</th>
+                <th onclick="sortTable(2)">成交量</th>
+                <th onclick="sortTable(3)">成交金額</th>
+                <th onclick="sortTable(4)">開盤價</th>
+                <th onclick="sortTable(5)">最高價</th>
+                <th onclick="sortTable(6)">最低價</th>
+                <th onclick="sortTable(7)">收盤價</th>
+                <th onclick="sortTable(8)">漲跌</th>
+                <th onclick="sortTable(9)">交易筆數</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- API 回應資料會顯示在這裡 -->
+        </tbody>
+    </table>
+
+    <script>
+        let stockData = [];
+        let sortDirections = Array(10).fill(true); // 用於記錄每一列的排序方向，true 代表從小到大，false 代表從大到小
+
+        async function fetchStockData() {
+            try {
+                // 發送 GET 請求到 API
+                const response = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
+                const data = await response.json();
+                
+                // 清空表格內容
+                const tableBody = document.getElementById('stockDataTable').getElementsByTagName('tbody')[0];
+                tableBody.innerHTML = '';
+
+                // 檢查 API 回應是否有效
+                if (data && Array.isArray(data)) {
+                    stockData = data;  // 保存原始資料
+                    displayData(stockData);  // 顯示所有資料
+                } else {
+                    alert("資料格式錯誤，請稍後再試。");
+                }
+            } catch (error) {
+                console.error("獲取資料時發生錯誤:", error);
+                alert("獲取資料失敗，請稍後再試。");
+            }
+        }
+
+        function displayData(data) {
+            const tableBody = document.getElementById('stockDataTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';  // 清空現有的表格內容
+
+            // 遍歷資料並顯示在表格中
+            data.forEach(item => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${item.Code}</td>
+                    <td>${item.Name}</td>
+                    <td>${item.TradeVolume}</td>
+                    <td>${item.TradeValue}</td>
+                    <td>${item.OpeningPrice}</td>
+                    <td>${item.HighestPrice}</td>
+                    <td>${item.LowestPrice}</td>
+                    <td>${item.ClosingPrice}</td>
+                    <td>${item.Change}</td>
+                    <td>${item.Transaction}</td>
+                `;
+            });
+        }
+
+        function filterData() {
+            const searchCode = document.getElementById('searchCode').value.toLowerCase();
+            const searchName = document.getElementById('searchName').value.toLowerCase();
+
+            const filteredData = stockData.filter(item => {
+                const codeMatch = item.Code.toLowerCase().includes(searchCode);
+                const nameMatch = item.Name.toLowerCase().includes(searchName);
+                return codeMatch && nameMatch;
+            });
+
+            displayData(filteredData);  // 顯示過濾後的資料
+        }
+
+        function sortTable(colIndex) {
+            const tableBody = document.getElementById('stockDataTable').getElementsByTagName('tbody')[0];
+            const rows = Array.from(tableBody.rows);
+
+            // 確定排序方向
+            const ascending = sortDirections[colIndex];
+
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.cells[colIndex].textContent;
+                const cellB = rowB.cells[colIndex].textContent;
+
+                let valueA = parseFloat(cellA.replace(/[^\d.-]/g, ''));  // 移除非數字字符
+                let valueB = parseFloat(cellB.replace(/[^\d.-]/g, ''));
+
+                // 如果是數字型態的欄位進行數字排序，否則進行字串排序
+                if (isNaN(valueA)) valueA = cellA;
+                if (isNaN(valueB)) valueB = cellB;
+
+                // 返回排序結果，根據排序方向調整大小
+                if (valueA < valueB) return ascending ? -1 : 1;
+                if (valueA > valueB) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            // 重排表格
+            rows.forEach(row => tableBody.appendChild(row));
+
+            // 切換排序方向
+            sortDirections[colIndex] = !ascending;
+        }
+    </script>
+</body>
+</html>

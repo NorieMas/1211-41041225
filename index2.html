@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空氣品質查詢系統</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            padding: 20px 0;
+            background-color: #4CAF50;
+            color: white;
+            margin: 0;
+        }
+        .search-bar {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .search-bar input {
+            padding: 10px;
+            width: 250px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .search-bar button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .search-bar button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            cursor: pointer;
+        }
+        th .sort-btn {
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        .sort-btn.asc::after {
+            content: " ▲";
+        }
+        .sort-btn.desc::after {
+            content: " ▼";
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>空氣品質查詢系統</h1>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="輸入測站名稱或縣市">
+            <button onclick="searchData()">搜尋</button>
+        </div>
+        
+        <button onclick="window.location.href='index.html'">台灣證交所股市資料</button>
+
+        <table id="airQualityTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">測站名稱 <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(1)">縣市 <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(2)">空氣品質指標 <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(3)">狀態 <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(4)">二氧化硫 (SO2) <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(5)">一氧化碳 (CO) <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(6)">臭氧 (O3) <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(7)">懸浮微粒 (PM10) <span class="sort-btn"></span></th>
+                    <th onclick="sortTable(8)">細懸浮微粒 (PM2.5) <span class="sort-btn"></span></th>
+                    <th>資料發布時間</th>
+                </tr>
+            </thead>
+            <tbody id="dataBody">
+                <!-- 資料將在這裡動態顯示 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const apiUrl = 'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=e8dd42e6-9b8b-43f8-991e-b3dee723a52d&limit=1000&format=JSON';
+        let data = [];
+
+        // 讀取資料並顯示在表格
+        async function fetchData() {
+            try {
+                const response = await fetch(apiUrl);
+                const result = await response.json();
+                data = result.records;
+                displayData(data);
+            } catch (error) {
+                console.error('無法取得資料:', error);
+            }
+        }
+
+        // 顯示資料
+        function displayData(data) {
+            const tableBody = document.getElementById('dataBody');
+            tableBody.innerHTML = '';
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.sitename}</td>
+                    <td>${record.county}</td>
+                    <td>${record.aqi}</td>
+                    <td>${record.status}</td>
+                    <td>${record.so2}</td>
+                    <td>${record.co}</td>
+                    <td>${record.o3}</td>
+                    <td>${record.pm10}</td>
+                    <td>${record.pm2_5}</td>
+                    <td>${record.publishtime}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 搜尋功能
+        function searchData() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const filteredData = data.filter(item => 
+                item.sitename.toLowerCase().includes(searchValue) || 
+                item.county.toLowerCase().includes(searchValue)
+            );
+            displayData(filteredData);
+        }
+
+        // 排序功能
+        let sortOrder = {};  // 记录每列的排序顺序，默认都从小到大
+        function sortTable(columnIndex) {
+            const rows = Array.from(document.querySelectorAll('#airQualityTable tbody tr'));
+            const key = columnIndex;
+
+            // 切换排序状态
+            if (!sortOrder[key] || sortOrder[key] === 'desc') {
+                sortOrder[key] = 'asc';  // 变为升序
+            } else {
+                sortOrder[key] = 'desc';  // 变为降序
+            }
+
+            // 排序
+            const sortedRows = rows.sort((a, b) => {
+                const aText = a.cells[key].innerText;
+                const bText = b.cells[key].innerText;
+
+                if (sortOrder[key] === 'asc') {
+                    return aText.localeCompare(bText, 'zh-Hant', { numeric: true });
+                } else {
+                    return bText.localeCompare(aText, 'zh-Hant', { numeric: true });
+                }
+            });
+
+            // 更新排序指示符
+            updateSortIcons(columnIndex);
+
+            const tableBody = document.getElementById('dataBody');
+            sortedRows.forEach(row => tableBody.appendChild(row));
+        }
+
+        // 更新排序箭頭
+        function updateSortIcons(sortedColumnIndex) {
+            const allHeaders = document.querySelectorAll('th .sort-btn');
+            allHeaders.forEach((header, index) => {
+                if (index === sortedColumnIndex) {
+                    if (sortOrder[index] === 'asc') {
+                        header.classList.add('asc');
+                        header.classList.remove('desc');
+                    } else {
+                        header.classList.add('desc');
+                        header.classList.remove('asc');
+                    }
+                } else {
+                    header.classList.remove('asc', 'desc');
+                }
+            });
+        }
+
+        // 初始載入資料
+        fetchData();
+    </script>
+
+</body>
+</html>
